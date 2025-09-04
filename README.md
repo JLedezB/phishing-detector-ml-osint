@@ -37,6 +37,3 @@ El sistema ofrece un **dashboard interactivo** con puntajes de riesgo, explicabi
 
 ### Infraestructura
 - Docker + Docker Compose  
-- GitHub Actions (CI/CD opcional)  
-git clone https://github.com/tu-usuario/phishing-detector-dashboard.git
-cd phishing-detector-dashboard
