@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pymongo
+motor
+scikit-learn
+nltk
+spacy
+requests
+python-multipart
+pyjwt
+passlib[bcrypt]
