@@ -3,6 +3,7 @@
 # Endpoints y motor heurístico de análisis de emails
 # - Scoring basado en reglas simples
 # - Persistencia en MongoDB por usuario
+# - Rutas especiales para administrador (ver historial global)
 # -----------------------------
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -13,6 +14,7 @@ from datetime import datetime
 from bson import ObjectId
 import re
 from .auth_utils import decode_access_token
+from .auth import require_admin  # ✅ Import del validador admin
 
 router = APIRouter()
 
@@ -26,6 +28,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     if not payload:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
     return payload["sub"]
+
+async def get_current_user_full(token: str = Depends(oauth2_scheme)):
+    """Devuelve todo el payload (usuario + rol)"""
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    return payload
+
 
 # =========================
 # Reglas heurísticas
@@ -42,6 +52,7 @@ SUS_DOMAINS_HINTS = [
 ]
 URL_REGEX = re.compile(r"https?://[^\s)>\]]+", re.IGNORECASE)
 
+
 # =========================
 # Helpers
 # =========================
@@ -54,6 +65,7 @@ def _doc_to_dict(doc: dict) -> dict:
         out["analysis_id"] = str(out["_id"])
         del out["_id"]
     return out
+
 
 # =========================
 # Motor de scoring heurístico
@@ -125,12 +137,14 @@ def _score_email(data: EmailIn) -> AnalyzeResult:
 
     return AnalyzeResult(risk_score=score, label=label, reasons=reasons, indicators=indicators)
 
+
 # =========================
-# Endpoints
+# Endpoints base
 # =========================
 @router.get("/status")
 def get_status():
     return {"status": "ok", "message": "Backend en FastAPI funcionando"}
+
 
 @router.get("/db/ping")
 async def db_ping():
@@ -139,6 +153,7 @@ async def db_ping():
     await col.insert_one(doc)
     count = await col.count_documents({})
     return {"mongo_connected": True, "health_docs": count}
+
 
 @router.post("/analyze")
 async def analyze_email(email: EmailIn, current_user: str = Depends(get_current_user)):
@@ -157,8 +172,10 @@ async def analyze_email(email: EmailIn, current_user: str = Depends(get_current_
 
     return {"analysis_id": str(res.inserted_id), **result.model_dump()}
 
+
 @router.get("/emails")
 async def list_emails(limit: int = 20, current_user: str = Depends(get_current_user)):
+    """Muestra solo los correos del usuario actual"""
     limit = max(1, min(limit, 100))
     col = get_collection("emails")
     cursor = (
@@ -168,6 +185,7 @@ async def list_emails(limit: int = 20, current_user: str = Depends(get_current_u
     )
     items = [_doc_to_dict(doc) async for doc in cursor]
     return {"count": len(items), "items": items}
+
 
 @router.get("/emails/{analysis_id}")
 async def get_email_analysis(analysis_id: str, current_user: str = Depends(get_current_user)):
@@ -182,3 +200,29 @@ async def get_email_analysis(analysis_id: str, current_user: str = Depends(get_c
         raise HTTPException(status_code=404, detail="Análisis no encontrado o no pertenece al usuario")
 
     return _doc_to_dict(doc)
+
+
+# =========================
+# Endpoints ADMIN
+# =========================
+@router.get("/admin/emails", dependencies=[Depends(require_admin)])
+async def admin_list_all_emails(limit: int = 50):
+    """
+    📊 Devuelve todos los análisis de todos los usuarios (solo admin)
+    Incluye usuario propietario, asunto, etiqueta y fecha.
+    """
+    limit = max(1, min(limit, 200))
+    col = get_collection("emails")
+    cursor = (
+        col.find({}, {"_id": 1, "email.subject": 1, "result.label": 1, "owner": 1, "created_at": 1})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+    items = []
+    async for doc in cursor:
+        d = _doc_to_dict(doc)
+        d["subject"] = doc.get("email", {}).get("subject", "")
+        d["label"] = doc.get("result", {}).get("label", "")
+        items.append(d)
+
+    return {"count": len(items), "items": items}

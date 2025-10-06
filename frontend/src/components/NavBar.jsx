@@ -26,10 +26,17 @@ export default function NavBar({ isLoggedIn, onLogout, user }) {
                 Historial
               </a>
 
+              {/* 🔐 Mostrar panel admin si el rol es admin */}
+              {user?.role === "admin" && (
+                <a className="nav-link d-inline text-warning ms-3" href="#/admin">
+                  Panel Admin
+                </a>
+              )}
+
               {/* 👤 Mostrar usuario logueado */}
               {user && (
                 <span className="text-white ms-4">
-                  Bienvenido, <strong>{user.username}</strong>
+                  Bienvenido, <strong>{user.username}</strong> ({user.role})
                 </span>
               )}
 

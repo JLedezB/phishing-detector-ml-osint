@@ -4,6 +4,7 @@ import { register } from "../api";
 export default function Register({ onRegister }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("user"); // ✅ Nuevo estado para el rol
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -14,8 +15,8 @@ export default function Register({ onRegister }) {
     setError("");
     setSuccess("");
     try {
-      const data = await register(username, password);
-      setSuccess("✅ Usuario registrado con éxito. Ahora puedes iniciar sesión.");
+      const data = await register(username, password, role); // ✅ Se envía el rol
+      setSuccess(`✅ Usuario ${role} registrado con éxito. Ahora puedes iniciar sesión.`);
       if (onRegister) onRegister(data);
     } catch (err) {
       setError("❌ Error al registrar usuario. Intenta con otro nombre.");
@@ -51,6 +52,19 @@ export default function Register({ onRegister }) {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+        </div>
+
+        {/* ✅ Campo de selección de rol */}
+        <div className="mb-3">
+          <label className="form-label">Rol</label>
+          <select
+            className="form-select"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+          >
+            <option value="user">Usuario</option>
+            <option value="admin">Administrador</option>
+          </select>
         </div>
 
         <button type="submit" className="btn btn-success w-100" disabled={loading}>

@@ -1,26 +1,30 @@
 // src/App.jsx
 import { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode } from "jwt-decode"; // ✅ Import corregido
 import NavBar from "./components/NavBar";
 import Analyze from "./pages/Analyze";
 import History from "./pages/History";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import AdminPanel from "./pages/AdminPanel"; // 🧩 Vista especial para administradores
 import { getToken, clearToken } from "./api";
 
 export default function App() {
   const [route, setRoute] = useState(window.location.hash || "#/login");
   const [user, setUser] = useState(null);
 
-  // Al iniciar, revisamos si hay token en localStorage y decodificamos
+  // Al iniciar, verificamos si existe un token en localStorage y decodificamos
   useEffect(() => {
     const token = getToken();
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        setUser({ username: decoded.sub }); // "sub" es el campo que pusimos en el backend
+        setUser({
+          username: decoded.sub,
+          role: decoded.role || "user",
+        });
       } catch (err) {
-        console.error("Error decodificando token:", err);
+        console.error("Error al decodificar el token:", err);
         clearToken();
       }
     }
@@ -33,7 +37,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  // Logout: limpiar token y usuario
+  // Cerrar sesión
   function handleLogout() {
     clearToken();
     setUser(null);
@@ -43,6 +47,7 @@ export default function App() {
   // Selección de página
   let Page;
   if (!user) {
+    // Usuario no logueado
     if (route.startsWith("#/register")) {
       Page = <Register />;
     } else {
@@ -51,17 +56,26 @@ export default function App() {
           onLogin={(data) => {
             try {
               const decoded = jwtDecode(data.access_token);
-              setUser({ username: decoded.sub });
+              setUser({
+                username: decoded.sub,
+                role: decoded.role || "user",
+              });
             } catch {
-              setUser({ username: "usuario" });
+              setUser({ username: "usuario", role: "user" });
             }
           }}
         />
       );
     }
   } else {
-    if (route.startsWith("#/history")) Page = <History />;
-    else Page = <Analyze />;
+    // Usuario logueado
+    if (route.startsWith("#/history")) {
+      Page = <History />;
+    } else if (route.startsWith("#/admin") && user.role === "admin") {
+      Page = <AdminPanel user={user} />;
+    } else {
+      Page = <Analyze />;
+    }
   }
 
   return (
