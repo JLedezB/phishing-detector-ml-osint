@@ -2,13 +2,12 @@
 # -----------------------------
 # Modelos Pydantic usados en la API
 # - Emails (entrada/análisis)
-# - Usuarios (registro/login)
+# - Usuarios (registro/login con roles)
 # - Tokens JWT
 # -----------------------------
 
 from typing import List, Dict, Optional
 from pydantic import BaseModel
-
 
 # -----------------------------
 # Emails
@@ -38,11 +37,18 @@ class UserIn(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
+    roles: Optional[List[str]] = ["user"]  # 🔹 por defecto será "user"
 
 
 class UserInDB(BaseModel):
     username: str
     hashed_password: str
+    roles: List[str] = ["user"]  # 🔹 almacenado en MongoDB
+
+
+class UserOut(BaseModel):
+    username: str
+    roles: List[str] = ["user"]
 
 
 # -----------------------------
@@ -55,6 +61,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+    roles: Optional[List[str]] = ["user"]  # 🔹 también incluimos roles
 
 
 class TokenResponse(BaseModel):
