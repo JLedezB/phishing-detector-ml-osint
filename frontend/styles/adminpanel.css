@@ -1,0 +1,25 @@
+.nav-pills .nav-link {
+  border-radius: 50px;
+  padding: 8px 20px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-pills .nav-link.active {
+  background-color: #0d6efd;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.4);
+}
+
+.card {
+  background-color: #ffffff;
+}
+
+.card-body h5, .card-body h6 {
+  font-family: "Inter", sans-serif;
+}
+
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}

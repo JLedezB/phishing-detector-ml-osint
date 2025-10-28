@@ -1,0 +1,25 @@
+{
+    "model_name": "Hybrid LogisticRegression",
+    "components": {
+        "text_vectorizer": "TF-IDF (1-2 grams)",
+        "numeric_features": [
+            "kw_count",
+            "url_count",
+            "shortener",
+            "sus_domain",
+            "subj_len",
+            "body_len"
+        ]
+    },
+    "created_at": "2025-10-19T22:55:16.007013",
+    "dataset_rows": 10,
+    "train_size": 8,
+    "test_size": 2,
+    "metrics": {
+        "accuracy": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0
+    },
+    "notes": "Modelo híbrido TF-IDF + features heurísticos para detección de phishing"
+}

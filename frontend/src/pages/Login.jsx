@@ -2,7 +2,7 @@ import { useState } from "react";
 import { login, register, setToken } from "../api";
 
 export default function Login({ onLogin }) {
-  const [mode, setMode] = useState("login"); // "login" o "register"
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,10 +14,11 @@ export default function Login({ onLogin }) {
     setLoading(true);
     setError("");
     setSuccess("");
+
     try {
       if (mode === "register") {
-        const data = await register(username, password);
-        setSuccess("✅ Usuario registrado, ahora puedes iniciar sesión.");
+        await register(username, password);
+        setSuccess("Usuario registrado correctamente. Ahora puedes iniciar sesión.");
         setMode("login");
       } else {
         const data = await login(username, password);
@@ -26,84 +27,216 @@ export default function Login({ onLogin }) {
           if (onLogin) onLogin(data);
         }
       }
-    } catch (err) {
-      setError("❌ Error en " + mode);
+    } catch {
+      setError("Error en " + (mode === "login" ? "inicio de sesión" : "registro"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="container mt-5" style={{ maxWidth: "400px" }}>
-      <h2 className="text-center mb-4">
-        {mode === "login" ? "Iniciar Sesión" : "Registrarse"}
-      </h2>
-      <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
-        {error && <div className="alert alert-danger">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
-
-        <div className="mb-3">
-          <label className="form-label">Usuario</label>
-          <input
-            type="text"
-            className="form-control"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+    <div
+      style={{
+        backgroundColor: "#0b1119",
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        color: "#e6e6e6",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          backgroundColor: "#101820",
+          border: "1px solid #1e2a35",
+          borderRadius: "14px",
+          boxShadow: "0 0 25px rgba(0,180,216,0.1)",
+          padding: "32px",
+        }}
+      >
+        {/* ====== HEADER ====== */}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <h2
+            style={{
+              color: mode === "login" ? "#00b4d8" : "#00c853",
+              fontWeight: "700",
+              letterSpacing: "0.5px",
+            }}
+          >
+            {mode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
+          </h2>
+          <p style={{ color: "#9ba1a6", fontSize: "0.9rem" }}>
+            {mode === "login"
+              ? "Accede a tu panel de análisis de correos"
+              : "Regístrate para comenzar a usar la plataforma"}
+          </p>
         </div>
 
-        <div className="mb-3">
-          <label className="form-label">Contraseña</label>
-          <input
-            type="password"
-            className="form-control"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        {/* ====== FORM ====== */}
+        <form onSubmit={handleSubmit}>
+          {error && (
+            <div
+              style={{
+                backgroundColor: "#3d0c0c",
+                border: "1px solid #ff4d4d",
+                color: "#ffb3b3",
+                borderRadius: "8px",
+                textAlign: "center",
+                fontWeight: "600",
+                padding: "8px",
+                marginBottom: "12px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+          {success && (
+            <div
+              style={{
+                backgroundColor: "#103e2e",
+                border: "1px solid #00c853",
+                color: "#b7ffcf",
+                borderRadius: "8px",
+                textAlign: "center",
+                fontWeight: "600",
+                padding: "8px",
+                marginBottom: "12px",
+              }}
+            >
+              {success}
+            </div>
+          )}
 
-        <button
-          type="submit"
-          className="btn btn-primary w-100"
-          disabled={loading}
-        >
-          {loading
-            ? mode === "login"
-              ? "Ingresando..."
-              : "Registrando..."
-            : mode === "login"
-            ? "Entrar"
-            : "Crear cuenta"}
-        </button>
+          <div style={{ marginBottom: "16px" }}>
+            <label
+              style={{
+                display: "block",
+                fontWeight: "600",
+                color: "#9ba1a6",
+                marginBottom: "6px",
+              }}
+            >
+              Usuario
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Ingresa tu usuario"
+              required
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid #2a2f36",
+                backgroundColor: "#0f1622",
+                color: "#e6e6e6",
+                outline: "none",
+              }}
+            />
+          </div>
 
-        <div className="text-center mt-3">
+          <div style={{ marginBottom: "24px" }}>
+            <label
+              style={{
+                display: "block",
+                fontWeight: "600",
+                color: "#9ba1a6",
+                marginBottom: "6px",
+              }}
+            >
+              Contraseña
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="********"
+              required
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: "1px solid #2a2f36",
+                backgroundColor: "#0f1622",
+                color: "#e6e6e6",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "10px",
+              backgroundColor: mode === "login" ? "#00b4d8" : "#00c853",
+              color: "#0b1119",
+              fontWeight: "600",
+              border: "none",
+              borderRadius: "8px",
+              boxShadow: "0 0 10px rgba(0,180,216,0.3)",
+              cursor: "pointer",
+              transition: "all 0.25s ease",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.boxShadow = "0 0 14px rgba(0,180,216,0.5)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.boxShadow = "0 0 10px rgba(0,180,216,0.3)")
+            }
+          >
+            {loading
+              ? mode === "login"
+                ? "Ingresando..."
+                : "Registrando..."
+              : mode === "login"
+              ? "Entrar"
+              : "Crear cuenta"}
+          </button>
+        </form>
+
+        {/* ====== FOOTER ====== */}
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
           {mode === "login" ? (
-            <span>
+            <p style={{ color: "#9ba1a6", fontSize: "0.9rem" }}>
               ¿No tienes cuenta?{" "}
               <button
-                type="button"
-                className="btn btn-link p-0"
                 onClick={() => setMode("register")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#00b4d8",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
               >
-                Regístrate
+                Regístrate aquí
               </button>
-            </span>
+            </p>
           ) : (
-            <span>
+            <p style={{ color: "#9ba1a6", fontSize: "0.9rem" }}>
               ¿Ya tienes cuenta?{" "}
               <button
-                type="button"
-                className="btn btn-link p-0"
                 onClick={() => setMode("login")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#00b4d8",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
               >
                 Inicia sesión
               </button>
-            </span>
+            </p>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 }

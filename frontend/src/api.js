@@ -2,12 +2,11 @@
 import { jwtDecode } from "jwt-decode";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
-
 let token = null;
 
-// ====================
-// Helpers de token
-// ====================
+/* ======================================================
+   🔐 Helpers de autenticación (token JWT)
+====================================================== */
 export function setToken(t) {
   token = t;
   localStorage.setItem("auth_token", t);
@@ -29,120 +28,148 @@ export function getUserFromToken() {
   try {
     const decoded = jwtDecode(t);
     return {
-      username: decoded.sub,
+      username: decoded.sub || decoded.username || "desconocido",
       role: decoded.role || "user",
       exp: decoded.exp,
     };
-  } catch (err) {
-    console.error("Error decoding token:", err);
+  } catch {
     return null;
   }
 }
 
-// ====================
-// AUTH
-// ====================
+/* ======================================================
+   🧩 Helper para requests autenticadas
+====================================================== */
+async function authFetch(url, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  const t = getToken();
+  if (t) headers["Authorization"] = `Bearer ${t}`;
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`❌ Error ${res.status} en ${url}:`, errorText);
+    throw new Error(`Error ${res.status}: ${errorText || res.statusText}`);
+  }
+
+  // Detectar tipo de contenido / respuesta
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) return res.json();
+  if (contentType.includes("text/csv") || contentType.includes("octet-stream"))
+    return res.blob();
+  return res.text();
+}
+
+/* ======================================================
+   👤 Auth (login / register)
+====================================================== */
 export async function register(username, password, role = "user") {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  return authFetch(`${API_BASE}/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password, role }),
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`Error al registrar usuario: ${msg}`);
-  }
-  return res.json();
 }
 
 export async function login(username, password) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  return authFetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`Error al iniciar sesión: ${msg}`);
-  }
-  return res.json();
 }
 
-// ====================
-// EMAILS (usuarios normales)
-// ====================
+/* ======================================================
+   📧 Emails (usuario)
+====================================================== */
 export async function analyzeEmail(payload) {
-  const res = await fetch(`${API_BASE}/analyze`, {
+  return authFetch(`${API_BASE}/analyze`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken() || ""}`,
-    },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Error al analizar correo (${res.status})`);
-  return res.json();
 }
 
 export async function listEmails(limit = 20) {
-  const res = await fetch(`${API_BASE}/emails?limit=${limit}`, {
-    headers: { Authorization: `Bearer ${getToken() || ""}` },
-  });
-  if (!res.ok) throw new Error(`Error al listar correos (${res.status})`);
-  return res.json();
+  return authFetch(`${API_BASE}/emails?limit=${limit}`);
 }
 
 export async function getEmailById(id) {
-  const res = await fetch(`${API_BASE}/emails/${id}`, {
-    headers: { Authorization: `Bearer ${getToken() || ""}` },
-  });
-  if (!res.ok) throw new Error(`Error al obtener correo (${res.status})`);
-  return res.json();
+  return authFetch(`${API_BASE}/emails/${id}`);
 }
 
-// ====================
-// ADMIN — Usuarios y correos globales
-// ====================
+/* ======================================================
+   🧭 Admin
+====================================================== */
+export async function adminListAllEmails(limit = 100) {
+  return authFetch(`${API_BASE}/admin/emails?limit=${limit}`);
+}
+
 export async function adminListUsers() {
-  const res = await fetch(`${API_BASE}/auth/users`, {
-    headers: { Authorization: `Bearer ${getToken() || ""}` },
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`Error al obtener usuarios: ${msg}`);
-  }
-  const data = await res.json();
-  return { users: data };
+  return authFetch(`${API_BASE}/auth/users`);
 }
 
 export async function adminDeleteUser(username) {
-  const res = await fetch(`${API_BASE}/auth/users/${username}`, {
+  return authFetch(`${API_BASE}/auth/users/${username}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${getToken() || ""}` },
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`Error al eliminar usuario: ${msg}`);
-  }
-  return res.json();
 }
 
-export async function adminListAllEmails(limit = 50) {
-  const res = await fetch(`${API_BASE}/admin/emails?limit=${limit}`, {
-    headers: { Authorization: `Bearer ${getToken() || ""}` },
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`Error al obtener correos globales: ${msg}`);
-  }
-  return res.json();
+export async function adminExportMLReport() {
+  const blob = await authFetch(`${API_BASE}/ml/export`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ml_report.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
-// ====================
-// Otros
-// ====================
-export async function pingDb() {
-  const res = await fetch(`${API_BASE}/db/ping`);
-  if (!res.ok) throw new Error(`Ping failed: ${res.status}`);
-  return res.json();
+/* ======================================================
+   🤖 Machine Learning
+====================================================== */
+export async function getMLInfo() {
+  return authFetch(`${API_BASE}/ml/info`);
 }
+
+export async function getMLMetrics() {
+  return authFetch(`${API_BASE}/ml/metrics`);
+}
+
+/* ======================================================
+   🕵️‍♂️ OSINT
+====================================================== */
+export async function osintScan({ analysis_id, urls }) {
+  return authFetch(`${API_BASE}/osint/scan`, {
+    method: "POST",
+    body: JSON.stringify({ analysis_id, urls }),
+  });
+}
+
+export async function getOSINT(analysis_id) {
+  return authFetch(`${API_BASE}/osint/${analysis_id}`);
+}
+
+/* ======================================================
+   📊 Dashboard OSINT (Resumen Global)
+====================================================== */
+export async function getOsintSummary() {
+  return authFetch(`${API_BASE}/osint/summary`);
+}
+
+/* ======================================================
+   📬 Gmail Integration
+====================================================== */
+export function gmailAuthorize() {
+  // Abre la URL del backend FastAPI para autorización OAuth de Gmail
+  window.open(`${API_BASE}/gmail/authorize`, "_blank");
+}
+
+export async function gmailFetch() {
+  // Llama al endpoint del backend que obtiene los correos desde Gmail
+  return authFetch(`${API_BASE}/gmail/fetch`);
+}
+

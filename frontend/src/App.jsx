@@ -1,19 +1,27 @@
-// src/App.jsx
+// ===========================================
+// src/App.jsx (versión corregida)
+// ===========================================
+// Muestra la Landing Page por defecto si no hay sesión
+// ===========================================
+
 import { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode"; // ✅ Import corregido
+import { jwtDecode } from "jwt-decode";
 import NavBar from "./components/NavBar";
+import Footer from "./components/Footer";
 import Analyze from "./pages/Analyze";
 import History from "./pages/History";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import AdminPanel from "./pages/AdminPanel"; // 🧩 Vista especial para administradores
+import AdminPanel from "./pages/AdminPanel";
+import OsintDashboard from "./pages/OsintDashboard";
+import Landing from "./pages/Landing"; // ✅ Landing integrada
 import { getToken, clearToken } from "./api";
 
 export default function App() {
-  const [route, setRoute] = useState(window.location.hash || "#/login");
+  const [route, setRoute] = useState(window.location.hash || "#/");
   const [user, setUser] = useState(null);
 
-  // Al iniciar, verificamos si existe un token en localStorage y decodificamos
+  // ✅ Verificar token almacenado
   useEffect(() => {
     const token = getToken();
     if (token) {
@@ -30,25 +38,40 @@ export default function App() {
     }
   }, []);
 
-  // Escucha de cambios en hash (routing)
+  // ✅ Escuchar cambios de hash
   useEffect(() => {
-    const onHash = () => setRoute(window.location.hash || "#/login");
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    const handleHashChange = () => {
+      const newHash = window.location.hash || "#/";
+      setRoute(newHash);
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  // Cerrar sesión
-  function handleLogout() {
-    clearToken();
-    setUser(null);
-    window.location.hash = "#/login";
-  }
+  // ✅ Redirigir a Landing si no hay hash ni token al cargar
+  useEffect(() => {
+    const token = getToken();
+    const hash = window.location.hash;
+    if (!token && (!hash || hash === "" || hash === "#")) {
+      window.location.hash = "#/"; // fuerza la landing
+      setRoute("#/");
+    }
+  }, []);
 
-  // Selección de página
+  // ✅ Cerrar sesión
+function handleLogout() {
+  clearToken();
+  setUser(null);
+  window.location.hash = "#/"; // Redirige al landing
+}
+
+
+  // ✅ Selección de página
   let Page;
   if (!user) {
-    // Usuario no logueado
-    if (route.startsWith("#/register")) {
+    if (route === "#/" || route === "" || route === "#") {
+      Page = <Landing />; // 🏠 Landing sin sesión
+    } else if (route.startsWith("#/register")) {
       Page = <Register />;
     } else {
       Page = (
@@ -56,35 +79,43 @@ export default function App() {
           onLogin={(data) => {
             try {
               const decoded = jwtDecode(data.access_token);
-              setUser({
+              const loggedUser = {
                 username: decoded.sub,
                 role: decoded.role || "user",
-              });
+              };
+              setUser(loggedUser);
+
+              // 🚀 Redirección según rol
+              if (loggedUser.role === "admin") {
+                window.location.hash = "#/admin";
+              } else {
+                window.location.hash = "#/analyze";
+              }
             } catch {
               setUser({ username: "usuario", role: "user" });
+              window.location.hash = "#/analyze";
             }
           }}
         />
       );
     }
   } else {
-    // Usuario logueado
     if (route.startsWith("#/history")) {
       Page = <History />;
     } else if (route.startsWith("#/admin") && user.role === "admin") {
       Page = <AdminPanel user={user} />;
+    } else if (route.startsWith("#/osint-dashboard")) {
+      Page = <OsintDashboard />;
     } else {
       Page = <Analyze />;
     }
   }
 
   return (
-    <>
+    <div className="d-flex flex-column min-vh-100 bg-dark text-light">
       <NavBar isLoggedIn={!!user} onLogout={handleLogout} user={user} />
-      {Page}
-      <footer className="text-center text-muted py-4">
-        <small>Detector de Phishing — Proyecto de Titulación</small>
-      </footer>
-    </>
+      <main className="flex-grow-1">{Page}</main>
+      <Footer />
+    </div>
   );
 }

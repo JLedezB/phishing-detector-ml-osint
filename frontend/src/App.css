@@ -40,3 +40,14 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Ajuste de mapa OSINT */
+.osint-map-container {
+  width: 100%;
+  max-width: 700px; /* ancho máximo para pantallas grandes */
+  height: 350px; /* alto controlado */
+  margin: 0 auto; /* centrado */
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+}

@@ -29,6 +29,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
+
+    # 🔧 Garantizar el estándar OAuth2: incluir "sub" como subject
+    # Si el payload trae "username" y no tiene "sub", lo agregamos.
+    if "username" in to_encode and "sub" not in to_encode:
+        to_encode["sub"] = to_encode["username"]
+
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
